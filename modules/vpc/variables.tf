@@ -9,3 +9,13 @@ variable "availability_zones" {
     type        = list(string)
     default     = ["us-east-1a", "us-east-1b"]
 }
+
+variable "cluster_name" {
+    description = "Name of the EKS cluster"
+    type        = string
+}
+
+variable "aws_region" {
+    description = "AWS region to deploy resources"
+    type        = string
+}
