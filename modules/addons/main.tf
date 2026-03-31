@@ -66,7 +66,31 @@ data "aws_iam_policy_document" "ebs_csi_driver_assume_role" {
 }
 
 resource "aws_iam_role_policy_attachment" "AmazonEBSCSIDriverPolicy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEBSCSIDriverPolicy"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
   role       = aws_iam_role.ebs_csi_driver.name
 }
 
+data "aws_iam_policy_document" "ebs_extra" {
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "ec2:DescribeAvailabilityZones",
+      "ec2:DescribeInstances",
+      "ec2:DescribeVolumes",
+      "ec2:DescribeSnapshots"
+    ]
+
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "ebs_extra" {
+  name   = "ebs-csi-extra"
+  policy = data.aws_iam_policy_document.ebs_extra.json
+}
+
+resource "aws_iam_role_policy_attachment" "ebs_extra_attach" {
+  role       = aws_iam_role.ebs_csi_driver.name
+  policy_arn = aws_iam_policy.ebs_extra.arn
+}

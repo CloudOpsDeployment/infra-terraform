@@ -42,17 +42,13 @@ resource "aws_eks_cluster" "this" {
 
 # Necesitamos el thumbprint TLS del OIDC endpoint para que IAM
 # pueda verificar los tokens. aws_eks_cluster ya lo expone.
-data "aws_eks_cluster" "this" {
-  name = var.cluster_name
-}
-
 data "tls_certificate" "eks_oidc" {
-  url = data.aws_eks_cluster.this.identity[0].oidc[0].issuer
+  url = aws_eks_cluster.this.identity[0].oidc[0].issuer
 }
 
 resource "aws_iam_openid_connect_provider" "eks" {
   # La URL del issuer OIDC es única por cluster — EKS la genera al crear el cluster
-  url = data.aws_eks_cluster.this.identity[0].oidc[0].issuer
+  url = aws_eks_cluster.this.identity[0].oidc[0].issuer
 
   # sts.amazonaws.com es quien va a validar los tokens — STS es el "audience"
   client_id_list = ["sts.amazonaws.com"]
