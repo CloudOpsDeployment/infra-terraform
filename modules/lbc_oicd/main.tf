@@ -3,9 +3,23 @@ data "http" "lbc_iam_policy" {
   url = "https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.7.0/docs/install/iam_policy.json"
 }
 
+data "aws_iam_policy_document" "lbc_iam_policy" {
+  source_json = data.http.lbc_iam_policy.response_body
+
+  statement {
+    sid    = "AllowListenerAttributesForGatewayAPI"
+    effect = "Allow"
+    actions = [
+      "elasticloadbalancing:DescribeListenerAttributes",
+      "elasticloadbalancing:ModifyListenerAttributes"
+    ]
+    resources = ["*"]
+  }
+}
+
 resource "aws_iam_policy" "lbc" {
   name   = "AWSLoadBalancerControllerIAMPolicy"
-  policy = data.http.lbc_iam_policy.response_body
+  policy = data.aws_iam_policy_document.lbc_iam_policy.json
 }
 
 # IRSA: IAM Role asumible por el ServiceAccount del LBC
@@ -40,30 +54,4 @@ resource "aws_iam_role" "lbc" {
 resource "aws_iam_role_policy_attachment" "lbc" {
   role       = aws_iam_role.lbc.name
   policy_arn = aws_iam_policy.lbc.arn
-}
-
-# Permisos complementarios mínimos para evitar AccessDenied en Gateway API
-# (el controller necesita Describe/Modify listener attributes durante reconciliación)
-resource "aws_iam_policy" "lbc_listener_attributes" {
-  name = "AWSLoadBalancerControllerAdditionalListenerAttributesPolicy"
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "elasticloadbalancing:DescribeListenerAttributes",
-          "elasticloadbalancing:ModifyListenerAttributes"
-        ]
-        # El requisito de la API no permite especificar listener concretos con suficiente precisión aquí,
-        # por lo que se usa wildcard. Esto es mínimo para la acción y no expande a servicios no relacionados.
-        Resource = "arn:aws:elasticloadbalancing:*:*:listener/*"
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "lbc_listener_attributes" {
-  role       = aws_iam_role.lbc.name
-  policy_arn = aws_iam_policy.lbc_listener_attributes.arn
 }

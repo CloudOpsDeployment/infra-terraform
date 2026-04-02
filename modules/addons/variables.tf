@@ -21,5 +21,5 @@ variable "aws_region" {
 variable "enable_gateway_api" {
   type        = bool
   description = "Enable Gateway API Helm release installation"
-  default     = false
+  default     = true
 }

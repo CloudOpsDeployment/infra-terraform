@@ -29,7 +29,7 @@ module "addons" {
   oidc_provider_arn  = module.eks.oidc_provider_arn
   oidc_provider_url  = module.eks.oidc_provider_url
   aws_region         = var.aws_region
-  enable_gateway_api = false
+  enable_gateway_api = true
 
   depends_on = [module.node_groups]
 }
