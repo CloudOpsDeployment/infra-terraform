@@ -3,6 +3,16 @@ output "vpc_id" {
   value       = module.vpc.vpc_id
 }
 
+output "vpc_cidr_block" {
+  description = "CIDR block of the created VPC"
+  value       = module.vpc.vpc_cidr_block
+}
+
+output "igw_id" {
+  description = "ID of the Internet Gateway"
+  value       = module.vpc.igw_id
+}
+
 output "public_subnet_ids" {
   description = "IDs of the public subnets"
   value       = module.vpc.public_subnet_ids
@@ -51,4 +61,8 @@ output "node_group_arn" {
 output "ecr_repository_urls" {
   description = "Map of microservice names to ECR repository URLs"
   value       = module.ecr.ecr_repository_urls
+}
+
+output "lbc_role_arn" {
+  value = module.lbc_oicd.lbc_role_arn
 }

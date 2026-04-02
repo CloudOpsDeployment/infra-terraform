@@ -33,7 +33,7 @@ resource "aws_iam_role_policy_attachment" "node_policies" {
 }
 
 resource "aws_eks_node_group" "this" {
-  cluster_name    = var.cluster_name 
+  cluster_name    = var.cluster_name
   node_group_name = "${var.cluster_name}-node-group"
   node_role_arn   = aws_iam_role.eks_nodes.arn
   subnet_ids      = var.private_subnet_ids
@@ -48,8 +48,15 @@ resource "aws_eks_node_group" "this" {
   capacity_type  = "ON_DEMAND"
 
   ami_type  = "AL2023_x86_64_STANDARD" # Amazon Linux 2023 Standard — EKS selects latest recommended AMI automatically
-  disk_size = 20                        # Tamaño del disco raíz en GB (default 20GB)
-
+  disk_size = 20                       # Tamaño del disco raíz en GB (default 20GB)
+  tags = merge(
+    {
+      "k8s.io/cluster-autoscaler/enabled"             = "true"
+      "k8s.io/cluster-autoscaler/${var.cluster_name}" = "owned"
+      "kubernetes.io/cluster/${var.cluster_name}"     = "owned"
+    },
+    var.node_group_tags
+  )
   update_config {
     max_unavailable = 1 # Número máximo de nodos que pueden estar indisponibles durante una actualización
   }

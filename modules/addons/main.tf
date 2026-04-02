@@ -3,6 +3,12 @@ resource "aws_eks_addon" "vpc_cni" {
   addon_name                  = "vpc-cni"
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "OVERWRITE"
+  configuration_values = jsonencode({
+    env = {
+      ENABLE_PREFIX_DELEGATION = "true"
+      WARM_PREFIX_TARGET       = "1"
+    }
+  })
 }
 
 # CoreDNS — el servidor DNS interno del cluster.
@@ -61,7 +67,7 @@ data "aws_iam_policy_document" "ebs_csi_driver_assume_role" {
       variable = "${var.oidc_provider_url}:sub"
       values   = ["system:serviceaccount:kube-system:ebs-csi-controller-sa"]
     }
-  
+
   }
 }
 
@@ -93,4 +99,144 @@ resource "aws_iam_policy" "ebs_extra" {
 resource "aws_iam_role_policy_attachment" "ebs_extra_attach" {
   role       = aws_iam_role.ebs_csi_driver.name
   policy_arn = aws_iam_policy.ebs_extra.arn
+}
+
+# Cluster Autoscaler service account role for EKS
+data "aws_iam_policy_document" "cluster_autoscaler_assume_role" {
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    effect  = "Allow"
+
+    principals {
+      type        = "Federated"
+      identifiers = [var.oidc_provider_arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.oidc_provider_url}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${var.oidc_provider_url}:sub"
+      values   = ["system:serviceaccount:kube-system:cluster-autoscaler"]
+    }
+  }
+}
+
+resource "aws_iam_role" "cluster_autoscaler" {
+  name               = "${var.cluster_name}-cluster-autoscaler"
+  assume_role_policy = data.aws_iam_policy_document.cluster_autoscaler_assume_role.json
+}
+
+data "aws_iam_policy_document" "cluster_autoscaler_policy_document" {
+  statement {
+    actions = [
+      "autoscaling:DescribeAutoScalingGroups",
+      "autoscaling:DescribeAutoScalingInstances",
+      "autoscaling:DescribeLaunchConfigurations",
+      "autoscaling:DescribeTags",
+      "autoscaling:SetDesiredCapacity",
+      "autoscaling:TerminateInstanceInAutoScalingGroup",
+      "autoscaling:UpdateAutoScalingGroup",
+      "ec2:DescribeLaunchTemplateVersions",
+      "ec2:DescribeInstances",
+      "ec2:DescribeInstanceTypes",
+      "ec2:DescribeTags",
+      "ec2:DescribeSubnets",
+      "ec2:DescribeSecurityGroups",
+      "ec2:DescribeAvailabilityZones",
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "cluster_autoscaler" {
+  name   = "${var.cluster_name}-cluster-autoscaler-policy"
+  policy = data.aws_iam_policy_document.cluster_autoscaler_policy_document.json
+}
+
+resource "aws_iam_role_policy_attachment" "cluster_autoscaler" {
+  role       = aws_iam_role.cluster_autoscaler.name
+  policy_arn = aws_iam_policy.cluster_autoscaler.arn
+}
+
+resource "kubernetes_service_account" "cluster_autoscaler" {
+  metadata {
+    name      = "cluster-autoscaler"
+    namespace = "kube-system"
+    annotations = {
+      "eks.amazonaws.com/role-arn" = aws_iam_role.cluster_autoscaler.arn
+    }
+  }
+}
+
+resource "helm_release" "cluster_autoscaler" {
+  name             = "cluster-autoscaler"
+  repository       = "https://kubernetes.github.io/autoscaler"
+  chart            = "cluster-autoscaler"
+  namespace        = "kube-system"
+  create_namespace = false
+
+  set {
+    name  = "autoDiscovery.clusterName"
+    value = var.cluster_name
+  }
+
+  set {
+    name  = "autoDiscovery.tags[0]"
+    value = "k8s.io/cluster-autoscaler/enabled"
+  }
+
+  set {
+    name  = "autoDiscovery.tags[1]"
+    value = "k8s.io/cluster-autoscaler/${var.cluster_name}"
+  }
+
+  set {
+    name  = "rbac.serviceAccount.create"
+    value = "false"
+  }
+
+  set {
+    name  = "rbac.serviceAccount.name"
+    value = kubernetes_service_account.cluster_autoscaler.metadata[0].name
+  }
+
+  set {
+    name  = "extraArgs.balance-similar-node-groups"
+    value = "true"
+  }
+
+  set {
+    name  = "extraArgs.skip-nodes-with-local-storage"
+    value = "false"
+  }
+
+  set {
+    name  = "extraArgs.expander"
+    value = "least-waste"
+  }
+
+  depends_on = [kubernetes_service_account.cluster_autoscaler]
+}
+
+resource "helm_release" "gateway_api" {
+  count            = var.enable_gateway_api ? 1 : 0
+  name             = "gateway-api"
+  repository       = "https://kubernetes-sigs.github.io/gateway-api/"
+  chart            = "gateway-api"
+  namespace        = "gateway-system"
+  create_namespace = true
+  version          = "1.7.0"
+  timeout          = 600
+
+  set {
+    name  = "installCRDs"
+    value = "true"
+  }
+
+  depends_on = [helm_release.cluster_autoscaler]
 }
