@@ -27,7 +27,7 @@ data "aws_iam_policy_document" "lbc_assume_role" {
       variable = "${var.oidc_provider_url}:sub"
       # kube-system es el namespace del LBC
       # aws-load-balancer-controller es el nombre del ServiceAccount
-      values   = ["system:serviceaccount:kube-system:aws-load-balancer-controller"]
+      values = ["system:serviceaccount:kube-system:aws-load-balancer-controller"]
     }
   }
 }
@@ -40,4 +40,30 @@ resource "aws_iam_role" "lbc" {
 resource "aws_iam_role_policy_attachment" "lbc" {
   role       = aws_iam_role.lbc.name
   policy_arn = aws_iam_policy.lbc.arn
+}
+
+# Permisos complementarios mínimos para evitar AccessDenied en Gateway API
+# (el controller necesita Describe/Modify listener attributes durante reconciliación)
+resource "aws_iam_policy" "lbc_listener_attributes" {
+  name = "AWSLoadBalancerControllerAdditionalListenerAttributesPolicy"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "elasticloadbalancing:DescribeListenerAttributes",
+          "elasticloadbalancing:ModifyListenerAttributes"
+        ]
+        # El requisito de la API no permite especificar listener concretos con suficiente precisión aquí,
+        # por lo que se usa wildcard. Esto es mínimo para la acción y no expande a servicios no relacionados.
+        Resource = "arn:aws:elasticloadbalancing:*:*:listener/*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "lbc_listener_attributes" {
+  role       = aws_iam_role.lbc.name
+  policy_arn = aws_iam_policy.lbc_listener_attributes.arn
 }

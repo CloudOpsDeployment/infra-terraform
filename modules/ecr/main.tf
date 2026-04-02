@@ -15,7 +15,7 @@ locals {
 }
 
 resource "aws_ecr_repository" "ecr" {
-for_each = toset(local.microservices)
+  for_each             = toset(local.microservices)
   name                 = "${var.project_name}-${each.key}-ecr-repo"
   image_tag_mutability = "MUTABLE"
 
