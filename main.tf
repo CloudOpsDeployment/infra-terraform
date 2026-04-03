@@ -46,6 +46,14 @@ module "lbc_oicd" {
   oidc_provider_url = module.eks.oidc_provider_url
 }
 
+module "eso_irsa" {
+  source = "./modules/eso_irsa"
+
+  oidc_provider_arn = module.eks.oidc_provider_arn
+  oidc_provider_url = module.eks.oidc_provider_url
+  aws_region        = var.aws_region
+}
+
 
 module "ecr" {
   source = "./modules/ecr"

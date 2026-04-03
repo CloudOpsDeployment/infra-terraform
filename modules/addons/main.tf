@@ -38,6 +38,7 @@ resource "aws_eks_addon" "ebs_csi_driver" {
 }
 
 # IAM
+# El EBS CSI es usado para aprovisionar volúmenes EBS dinámicamente con PersistentVolumeClaims.
 resource "aws_iam_role" "ebs_csi_driver" {
   name               = "ebs-csi-driver"
   assume_role_policy = data.aws_iam_policy_document.ebs_csi_driver_assume_role.json

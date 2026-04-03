@@ -4,7 +4,7 @@ data "http" "lbc_iam_policy" {
 }
 
 data "aws_iam_policy_document" "lbc_iam_policy" {
-  source_json = data.http.lbc_iam_policy.response_body
+  source_policy_documents = [data.http.lbc_iam_policy.response_body]
 
   statement {
     sid    = "AllowListenerAttributesForGatewayAPI"
@@ -47,7 +47,7 @@ data "aws_iam_policy_document" "lbc_assume_role" {
 }
 
 resource "aws_iam_role" "lbc" {
-  name               = "online-boutique-lbc-role"
+  name               = "cloudops-ecommerce-app-lbc-role"
   assume_role_policy = data.aws_iam_policy_document.lbc_assume_role.json
 }
 
