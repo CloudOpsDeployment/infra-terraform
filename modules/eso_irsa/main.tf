@@ -4,16 +4,16 @@ data "aws_caller_identity" "current" {}
 resource "aws_iam_policy" "eso_ssm_policy" {
   name        = "ExternalSecretsOperatorSSMPolicy"
   description = "Permisos para que ESO lea parametros bajo /cloudops-deployment-app/*"
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
         Effect = "Allow"
         Action = [
-        "secretsmanager:GetSecretValue",
-        "secretsmanager:DescribeSecret",
-        "secretsmanager:ListSecretVersionIds"
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:ListSecretVersionIds"
         ]
         # Se restringe estrictamente el acceso al path requerido
         Resource = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret/cloudops-ecommerce-app/*"
@@ -30,7 +30,7 @@ data "aws_iam_policy_document" "eso_assume_role_policy" {
 
     principals {
       type        = "Federated"
-      identifiers = [var.oidc_provider_arn] 
+      identifiers = [var.oidc_provider_arn]
     }
 
     condition {

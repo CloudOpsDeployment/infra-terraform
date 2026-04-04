@@ -17,9 +17,3 @@ variable "aws_region" {
   type        = string
   description = "AWS region to deploy resources"
 }
-
-variable "enable_gateway_api" {
-  type        = bool
-  description = "Enable Gateway API Helm release installation"
-  default     = true
-}

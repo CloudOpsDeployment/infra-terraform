@@ -26,6 +26,11 @@ terraform {
       source  = "hashicorp/helm"
       version = "~> 2.11"
     }
+
+    kubectl = {
+      source  = "gavinbunney/kubectl"
+      version = ">= 1.14.0"
+    }
   }
 }
 
@@ -58,4 +63,11 @@ provider "helm" {
     cluster_ca_certificate = base64decode(module.eks.cluster_ca_certificate)
     token                  = data.aws_eks_cluster_auth.this.token
   }
+}
+
+provider "kubectl" {
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_ca_certificate)
+  token                  = data.aws_eks_cluster_auth.this.token
+  load_config_file       = false
 }

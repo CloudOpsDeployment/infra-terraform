@@ -1,3 +1,16 @@
+terraform {
+  required_providers {
+    kubectl = {
+      source  = "gavinbunney/kubectl"
+      version = ">= 1.14.0"
+    }
+
+    http = {
+      source = "hashicorp/http"
+    }
+  }
+}
+
 resource "aws_eks_addon" "vpc_cni" {
   cluster_name                = var.cluster_name
   addon_name                  = "vpc-cni"
@@ -224,20 +237,24 @@ resource "helm_release" "cluster_autoscaler" {
   depends_on = [kubernetes_service_account.cluster_autoscaler]
 }
 
-resource "helm_release" "gateway_api" {
-  count            = var.enable_gateway_api ? 1 : 0
-  name             = "gateway-api"
-  repository       = "https://kubernetes-sigs.github.io/gateway-api/"
-  chart            = "gateway-api"
-  namespace        = "gateway-system"
-  create_namespace = true
-  version          = "1.7.0"
-  timeout          = 600
+# Gateway API CRDs
+data "http" "gateway_api_crds" {
+  url = "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml"
+}
 
-  set {
-    name  = "installCRDs"
-    value = "true"
+data "kubectl_file_documents" "gateway_api_docs" {
+  content = data.http.gateway_api_crds.response_body
+}
+
+resource "kubectl_manifest" "gateway_api_crds" {
+  for_each          = data.kubectl_file_documents.gateway_api_docs.manifests
+  yaml_body         = each.value
+  server_side_apply = true
+
+  lifecycle {
+    prevent_destroy = true
   }
 
   depends_on = [helm_release.cluster_autoscaler]
 }
+

@@ -13,6 +13,10 @@ output "igw_id" {
   value       = module.vpc.igw_id
 }
 
+output "eso_role_arn" {
+  value = module.eso_irsa.eso_role_arn
+}
+
 output "public_subnet_ids" {
   description = "IDs of the public subnets"
   value       = module.vpc.public_subnet_ids
