@@ -1,17 +1,18 @@
 # Descargar la política oficial de AWS para el LBC
 data "http" "lbc_iam_policy" {
-  url = "https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.7.0/docs/install/iam_policy.json"
+  url = "https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.9.0/docs/install/iam_policy.json"
 }
 
 data "aws_iam_policy_document" "lbc_iam_policy" {
   source_policy_documents = [data.http.lbc_iam_policy.response_body]
 
   statement {
-    sid    = "AllowListenerAttributesForGatewayAPI"
+    sid    = "AllowAdditionalPermsForGatewayAPI"
     effect = "Allow"
     actions = [
       "elasticloadbalancing:DescribeListenerAttributes",
-      "elasticloadbalancing:ModifyListenerAttributes"
+      "elasticloadbalancing:ModifyListenerAttributes",
+      "ec2:DescribeRouteTables"
     ]
     resources = ["*"]
   }

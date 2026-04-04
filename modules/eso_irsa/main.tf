@@ -16,7 +16,10 @@ resource "aws_iam_policy" "eso_ssm_policy" {
           "secretsmanager:ListSecretVersionIds"
         ]
         # Se restringe estrictamente el acceso al path requerido
-        Resource = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret/cloudops-ecommerce-app/*"
+        Resource = [
+          "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:/cloudops-ecommerce-app/*",
+          "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:cloudops-ecommerce-app/*"
+        ]
       }
     ]
   })

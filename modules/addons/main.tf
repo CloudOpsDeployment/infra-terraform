@@ -242,12 +242,23 @@ data "http" "gateway_api_crds" {
   url = "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml"
 }
 
-data "kubectl_file_documents" "gateway_api_docs" {
-  content = data.http.gateway_api_crds.response_body
+locals {
+  gateway_api_crd_documents = [
+    for doc in split("\n---\n", data.http.gateway_api_crds.response_body) : trimspace(doc)
+    if trimspace(doc) != "" && can(yamldecode(trimspace(doc)).kind) && yamldecode(trimspace(doc)).kind == "CustomResourceDefinition"
+  ]
+
+  gateway_api_crd_manifests = {
+    for doc in local.gateway_api_crd_documents : format(
+      "/apis/%s/customresourcedefinitions/%s",
+      yamldecode(doc).apiVersion,
+      yamldecode(doc).metadata.name
+    ) => doc
+  }
 }
 
 resource "kubectl_manifest" "gateway_api_crds" {
-  for_each          = data.kubectl_file_documents.gateway_api_docs.manifests
+  for_each          = local.gateway_api_crd_manifests
   yaml_body         = each.value
   server_side_apply = true
 
